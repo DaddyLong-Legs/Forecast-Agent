@@ -9,7 +9,7 @@ st.set_page_config(page_title="Business Case Forecasting Agent", layout="wide")
 st.title("📈 Business Case Forecasting Agent")
 
 # API Key Input (temporary use for local testing)
-openai_api_key = st.text_input("🔑 Enter your OpenAI API key", type="password")
+openai_api_key = st.secrets["OPENAI_API_KEY"]
 if not openai_api_key:
     st.warning("Please enter your OpenAI API key to proceed.")
     st.stop()
