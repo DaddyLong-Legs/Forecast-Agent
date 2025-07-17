@@ -114,37 +114,33 @@ if st.button("Generate Forecast"):
             st.subheader("📈 Forecast Output")
             st.dataframe(df)
 
-            # Plotting
-          # Preview columns
-st.write("Forecast Columns:", df.columns.tolist())
+            # Preview columns for debugging
+            st.write("Forecast Columns:", df.columns.tolist())
 
-# Normalize column names for plotting
-expected_cols = {
-    "Monthly Revenue (local currency)": None,
-    "Paying Users": None,
-    "Estimated Churn": None
-}
+            # Normalize column names for plotting
+            expected_cols = {
+                "Monthly Revenue (local currency)": None,
+                "Paying Users": None,
+                "Estimated Churn": None
+            }
 
-# Try to match expected columns
-for col in df.columns:
-    col_lower = col.lower()
-    if "revenue" in col_lower:
-        expected_cols["Monthly Revenue (local currency)"] = col
-    elif "paying" in col_lower:
-        expected_cols["Paying Users"] = col
-    elif "churn" in col_lower:
-        expected_cols["Estimated Churn"] = col
+            for col in df.columns:
+                col_lower = col.lower()
+                if "revenue" in col_lower:
+                    expected_cols["Monthly Revenue (local currency)"] = col
+                elif "paying" in col_lower:
+                    expected_cols["Paying Users"] = col
+                elif "churn" in col_lower:
+                    expected_cols["Estimated Churn"] = col
 
-# Filter out missing ones
-plot_columns = [col for col in expected_cols.values() if col is not None]
+            plot_columns = [col for col in expected_cols.values() if col is not None]
 
-if len(plot_columns) >= 2:
-    fig, ax = plt.subplots()
-    df.plot(x=df.columns[0], y=plot_columns, ax=ax)
-    st.pyplot(fig)
-else:
-    st.warning("Not enough data to plot forecast. Please check the forecast format.")
-
+            if len(plot_columns) >= 2:
+                fig, ax = plt.subplots()
+                df.plot(x=df.columns[0], y=plot_columns, ax=ax)
+                st.pyplot(fig)
+            else:
+                st.warning("Not enough data to plot forecast. Please check the forecast format.")
 
             # Download
             output = io.BytesIO()
