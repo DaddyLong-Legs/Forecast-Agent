@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 # Set page configuration
 st.set_page_config(page_title="Business Forecasting Agent", layout="wide")
-st.title("📊 Business Forecasting Agent")
+st.title("\U0001F4CA Business Forecasting Agent")
 
 # --- User Inputs ---
 st.markdown("### Provide Service Details for Forecasting")
@@ -115,7 +115,6 @@ if st.button("Generate Forecast"):
             st.session_state["forecast_output"] = forecast_text
             st.session_state["forecast_done"] = True
 
-            # Try parsing table into DataFrame
             from io import StringIO
             import re
 
@@ -136,7 +135,6 @@ if st.button("Generate Forecast"):
             st.subheader("📈 Forecast Output")
             st.dataframe(df)
 
-            # Normalize column names for plotting
             expected_cols = {
                 "Monthly Revenue (local currency)": None,
                 "Paying Users": None,
@@ -144,12 +142,12 @@ if st.button("Generate Forecast"):
             }
 
             for col in df.columns:
-                col_lower = col.lower()
-                if "revenue" in col_lower and expected_cols["Monthly Revenue (local currency)"] is None:
+                col_norm = col.strip().lower()
+                if "revenue" in col_norm and expected_cols["Monthly Revenue (local currency)"] is None:
                     expected_cols["Monthly Revenue (local currency)"] = col
-                elif "paying" in col_lower and expected_cols["Paying Users"] is None:
+                elif ("paying" in col_norm or "subscribers" in col_norm) and expected_cols["Paying Users"] is None:
                     expected_cols["Paying Users"] = col
-                elif "churn" in col_lower and expected_cols["Estimated Churn"] is None:
+                elif "churn" in col_norm and expected_cols["Estimated Churn"] is None:
                     expected_cols["Estimated Churn"] = col
 
             plot_columns = [col for col in expected_cols.values() if col is not None]
@@ -169,7 +167,6 @@ if st.button("Generate Forecast"):
             else:
                 st.warning("Not enough data to plot forecast. Please check the forecast format.")
 
-            # Download
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False, sheet_name='Forecast')
