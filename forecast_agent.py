@@ -36,8 +36,18 @@ operators_by_country = {
 mobile_operator = st.selectbox("Mobile Operator", operators_by_country.get(country, []))
 monetization_model = st.selectbox("Monetization Model", ["Paid Subscription", "Freemium (Free Trial → Premium)", "Ad-supported", "Mixed"])
 daily_promo_bandwidth = st.number_input("Estimated Daily Promotional Bandwidth (e.g., SMS/Impressions)", min_value=0)
-conversion_rate = st.slider("Expected Conversion Rate from Promotions (%)", 0, 100, 5)
-charging_success_rate = st.slider("Charging Success Rate (%)", 0, 100, 90)
+
+conversion_rate = st.slider(
+    "Expected Conversion Rate from Promotions (%)",
+    0, 100, 5,
+    help="Estimated % of users who respond to promotional messages and subscribe"
+)
+
+charging_success_rate = st.slider(
+    "Charging Success Rate (%)",
+    0, 100, 90,
+    help="Estimated % of subscription attempts that are successfully charged"
+)
 
 # Subscription model details
 subscription_model = st.selectbox("Subscription Frequency", ["Daily", "Weekly", "Monthly"])
