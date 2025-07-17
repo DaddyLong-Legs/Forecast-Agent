@@ -100,7 +100,8 @@ if st.button("Generate Forecast"):
             - Average Monthly ARPU: {arpu} (local currency)
             - Forecast Duration: 12 months
 
-            Respond ONLY with a CSV-formatted table enclosed in triple backticks, with headers in the first row and values properly comma-separated.
+            Respond ONLY with a CSV-formatted table enclosed in triple backticks, with a first column called 'Month' listing the 12 months and then including at minimum: 'Monthly Revenue (local currency)', 'Paying Users', and 'Estimated Churn'.
+            Ensure the CSV is parsable and values are comma-separated.
             """
 
             response = openai.ChatCompletion.create(
