@@ -57,6 +57,22 @@ charging_success_rate = st.slider(
     help="Estimated % of subscription attempts that are successfully charged"
 )
 
+# ARPU mapping per operator per country
+arpu_map = {
+    "Pakistan": {"Jazz": 1.5, "Telenor": 1.2, "Zong": 1.4, "Ufone": 1.1},
+    "UAE": {"Etisalat": 25, "du": 22},
+    "Saudi Arabia": {"STC": 20, "Mobily": 18, "Zain": 17},
+    "India": {"Jio": 2.5, "Airtel": 3.2, "Vi": 2.1},
+    # Add more country-operator ARPUs here...
+}
+
+arpu = arpu_map.get(country, {}).get(mobile_operator, 0.0)
+
+if arpu:
+    st.info(f"⚙️ Average ARPU for {mobile_operator}, {country}: {arpu} (local currency)")
+else:
+    st.warning("⚠️ No ARPU data found for selected country/operator. Please ensure values are correct.")
+
 # Subscription model details
 subscription_model = st.selectbox("Subscription Frequency", ["Daily", "Weekly", "Monthly"])
 subscription_price = st.number_input("Subscription Price (in local currency)", min_value=0.0, format="%.2f")
@@ -81,17 +97,10 @@ if st.button("Generate Forecast"):
             - Charging Success Rate: {charging_success_rate}%
             - Subscription Model: {subscription_model}
             - Subscription Price: {subscription_price} (local currency)
+            - Average Monthly ARPU: {arpu} (local currency)
             - Forecast Duration: 12 months
 
-            Generate a table with the following for each month:
-            - Month Number
-            - New Users from Promotions
-            - Paying Users
-            - Monthly Revenue (local currency)
-            - Estimated Churn
-            - Active Users
-
-            Include columns in a CSV-style output.
+            Respond ONLY with a CSV-formatted table enclosed in triple backticks, with headers in the first row and values properly comma-separated.
             """
 
             response = openai.ChatCompletion.create(
@@ -110,18 +119,22 @@ if st.button("Generate Forecast"):
             from io import StringIO
             import re
 
-            # Extract CSV-style content
             csv_like = re.findall(r"(?<=```)([\s\S]*?)(?=```)", forecast_text)
             data = csv_like[0] if csv_like else forecast_text
-            df = pd.read_csv(StringIO(data), sep="," if "," in data else "\t")
+
+            st.text_area("📄 Raw Forecast Output (Debug)", data, height=200)
+
+            try:
+                df = pd.read_csv(StringIO(data), sep="," if "," in data else "\t", engine="python", on_bad_lines='warn')
+            except Exception as parse_error:
+                st.error("❌ Failed to parse forecast data. Please check the format returned by GPT.")
+                raise parse_error
+
             st.session_state["forecast_df"] = df
 
             st.markdown("---")
             st.subheader("📈 Forecast Output")
             st.dataframe(df)
-
-            # Preview columns for debugging
-            st.write("Forecast Columns:", df.columns.tolist())
 
             # Normalize column names for plotting
             expected_cols = {
