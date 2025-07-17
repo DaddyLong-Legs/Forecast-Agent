@@ -13,7 +13,27 @@ st.markdown("### Provide Service Details for Forecasting")
 service_type = st.selectbox("Type of Service", ["Digital (Mobile/Web App)", "Legacy (SMS/IVR/USSD)"])
 service_nature = st.selectbox("Nature of Service", ["Sports", "Utility", "Entertainment", "Infotainment", "Health", "Finance", "Education"])
 deployment_model = st.selectbox("Deployment Model", ["White Label", "Mobile Operator Hosted"])
-regions = st.text_input("Target Regions (e.g., UAE, Pakistan, MENA)")
+country = st.selectbox(
+    "Target Country",
+    ["Pakistan", "UAE", "Saudi Arabia", "Qatar", "Egypt", "Jordan", "Kuwait", "Bahrain", "Oman", "India", "Bangladesh"]
+)
+
+# Country to operators mapping
+operators_by_country = {
+    "Pakistan": ["Jazz", "Telenor", "Zong", "Ufone"],
+    "UAE": ["Etisalat", "du"],
+    "Saudi Arabia": ["STC", "Mobily", "Zain"],
+    "Qatar": ["Ooredoo", "Vodafone"],
+    "Egypt": ["Vodafone Egypt", "Orange Egypt", "Etisalat Misr"],
+    "Jordan": ["Zain Jordan", "Orange Jordan", "Umniah"],
+    "Kuwait": ["Zain Kuwait", "Ooredoo Kuwait", "STC Kuwait"],
+    "Bahrain": ["Batelco", "Zain Bahrain", "STC Bahrain"],
+    "Oman": ["Omantel", "Ooredoo Oman"],
+    "India": ["Jio", "Airtel", "Vi"],
+    "Bangladesh": ["Grameenphone", "Robi", "Banglalink"]
+}
+
+mobile_operator = st.selectbox("Mobile Operator", operators_by_country.get(country, []))
 monetization_model = st.selectbox("Monetization Model", ["Paid Subscription", "Freemium (Free Trial → Premium)", "Ad-supported", "Mixed"])
 
 # Submit button to run forecast
@@ -28,7 +48,8 @@ if st.button("Generate Forecast"):
             - Type of Service: {service_type}
             - Nature of Service: {service_nature}
             - Deployment Model: {deployment_model}
-            - Target Regions: {regions}
+            - Target Country: {country}
+            - Mobile Operator: {mobile_operator}
             - Monetization Model: {monetization_model}
             - Forecast Duration: 12 months
 
@@ -38,8 +59,8 @@ if st.button("Generate Forecast"):
             - Monthly Net Growth
             - Estimated Monthly Revenue
 
-            Use typical conversion rates and churn assumptions based on the monetization model provided.
-            Display the output in a 12-row table (1 per month). Base your assumptions on known regional trends.
+            Use typical conversion rates and churn assumptions based on the monetization model provided and public ARPU data for the mobile operator in the given country.
+            Display the output in a 12-row table (1 per month). Base your assumptions on known trends and public data where possible.
 
             If model is freemium, consider trial conversion rate. If paid-only, factor in higher churn at start.
             """
@@ -79,17 +100,13 @@ if st.session_state.get("forecast_done"):
                     df_example = pd.read_csv(example_file) if example_file.name.endswith(".csv") else pd.read_excel(example_file)
                     file_summary = df_example.head().to_string()
 
-                refine_prompt = """
-                Revise the following forecast based on this user feedback: '{}'
-                {}
+                refine_prompt = f"""
+                Revise the following forecast based on this user feedback: '{ref_input}'
+                {f"Here is a sample reference:\n{file_summary}" if file_summary else ""}
 
                 The original forecast was:
-                {}
-                """.format(
-                    ref_input,
-                    f"Here is a sample reference:\n{file_summary}" if file_summary else "",
-                    st.session_state['forecast_output']
-                )
+                {st.session_state['forecast_output']}
+                """
 
                 refined_response = openai.ChatCompletion.create(
                     model="gpt-4",
