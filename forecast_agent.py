@@ -36,6 +36,8 @@ operators_by_country = {
 mobile_operator = st.selectbox("Mobile Operator", operators_by_country.get(country, []))
 monetization_model = st.selectbox("Monetization Model", ["Paid Subscription", "Freemium (Free Trial → Premium)", "Ad-supported", "Mixed"])
 daily_promo_bandwidth = st.number_input("Estimated Daily Promotional Bandwidth (e.g., SMS/Impressions)", min_value=0)
+conversion_rate = st.slider("Expected Conversion Rate from Promotions (%)", 0, 100, 5)
+charging_success_rate = st.slider("Charging Success Rate (%)", 0, 100, 90)
 
 # Subscription model details
 subscription_model = st.selectbox("Subscription Frequency", ["Daily", "Weekly", "Monthly"])
@@ -57,6 +59,8 @@ if st.button("Generate Forecast"):
             - Mobile Operator: {mobile_operator}
             - Monetization Model: {monetization_model}
             - Daily Promotional Bandwidth: {daily_promo_bandwidth}
+            - Conversion Rate from Promotions: {conversion_rate}%
+            - Charging Success Rate: {charging_success_rate}%
             - Subscription Model: {subscription_model}
             - Subscription Price: {subscription_price} (local currency)
             - Forecast Duration: 12 months
@@ -67,13 +71,19 @@ if st.button("Generate Forecast"):
             - Monthly Net Growth
             - Estimated Monthly Revenue (in local currency of {country})
 
-            Use typical conversion rates and churn assumptions based on the monetization model provided, 
-            and public ARPU data for the mobile operator in the given country.
-            Consider the impact of the given promotional bandwidth and subscription pricing model on new subscriber acquisition.
+            Assume that daily promotional bandwidth reflects the maximum number of new potential users who can be reached each day.
+            Multiply the bandwidth with the conversion rate to estimate new users, then apply charging success rate to compute paying users.
+            For subscription model:
+            - Daily: users are charged {subscription_price} every day
+            - Weekly: users are charged {subscription_price} every week
+            - Monthly: users are charged {subscription_price} every month
 
-            Display the output in a 12-row table (1 per month). Base your assumptions on known trends and public data where possible.
+            Incorporate this charging model and charging success rate into the monthly revenue forecasts.
 
-            If model is freemium, consider trial conversion rate. If paid-only, factor in higher churn at start.
+            Use public ARPU benchmarks of the selected mobile operator in the given country to improve estimate reliability.
+            Factor in the impact of promotional reach, price sensitivity, user churn/conversion, and monetization effectiveness.
+
+            Display the output in a 12-row table (1 per month). Base your assumptions on known telecom trends and available public operator data.
             """
 
             response = openai.ChatCompletion.create(
