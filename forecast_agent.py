@@ -1,84 +1,104 @@
 import streamlit as st
-import openai
 import pandas as pd
-import plotly.express as px
-from io import BytesIO
+import openai
+import os
 
-# UI Setup
-st.set_page_config(page_title="Business Case Forecasting Agent", layout="wide")
-st.title("📈 Business Case Forecasting Agent")
+# Set page configuration
+st.set_page_config(page_title="Business Forecasting Agent", layout="wide")
+st.title("📊 Business Forecasting Agent")
 
-# API Key Input (temporary use for local testing)
-openai_api_key = st.secrets["OPENAI_API_KEY"]
-if not openai_api_key:
-    st.warning("Please enter your OpenAI API key to proceed.")
-    st.stop()
+# --- User Inputs ---
+st.markdown("### Provide Service Details for Forecasting")
 
-openai.api_key = openai_api_key
+service_type = st.selectbox("Type of Service", ["Digital (Mobile/Web App)", "Legacy (SMS/IVR/USSD)"])
+service_nature = st.selectbox("Nature of Service", ["Sports", "Utility", "Entertainment", "Infotainment", "Health", "Finance", "Education"])
+deployment_model = st.selectbox("Deployment Model", ["White Label", "Mobile Operator Hosted"])
+regions = st.text_input("Target Regions (e.g., UAE, Pakistan, MENA)")
+monetization_model = st.selectbox("Monetization Model", ["Paid Subscription", "Freemium (Free Trial → Premium)", "Ad-supported", "Mixed"])
 
-# Step-by-step Inputs
-st.header("1. Define Your Service")
-service_type = st.selectbox("Type of Service", ["Digital - Mobile App", "Digital - Web App", "Legacy - SMS", "Legacy - IVR", "Legacy - USSD"])
-nature = st.selectbox("Nature of Service", ["Entertainment", "Utility", "Infotainment", "Sports", "Religious", "Education", "Others"])
-label_type = st.radio("Is this a White-label or Operator-branded service?", ["White-label", "Operator-branded"])
-regions = st.multiselect("Target Region(s)", ["Pakistan", "MENA", "South Asia", "Africa", "Europe", "Other"])
-
-if st.button("🔍 Generate Forecast"):
-    with st.spinner("Talking to GPT-4..."):
-        # Construct prompt
-        prompt = f"""
-You're a telecom business analyst. Based on the following service inputs, generate a 12-month forecast for:
-- Monthly Subscriber Base
-- Monthly Growth Rate (%)
-- Monthly Churn Rate (%)
-- Monthly Revenue (in USD, estimate based on avg ARPU)
-
-Inputs:
-- Type of Service: {service_type}
-- Nature of Service: {nature}
-- Label Type: {label_type}
-- Regions: {", ".join(regions)}
-
-Output as a table with columns: Month, Subscribers, Growth Rate, Churn Rate, Revenue
-Start with Month 1 and project until Month 12.
-"""
-
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a data analyst specializing in telecom forecasting."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3,
-        )
-
-        raw_output = response['choices'][0]['message']['content']
-        st.subheader("📊 Forecast Table (GPT-4 Generated)")
-
-        # Try to parse the response into a DataFrame
+# Submit button to run forecast
+if st.button("Generate Forecast"):
+    with st.spinner("Generating 12-month forecast using AI..."):
         try:
-            # Auto-detect markdown or tabular text
-            df = pd.read_csv(pd.compat.StringIO(raw_output), sep=",")
+            openai.api_key = os.getenv("OPENAI_API_KEY")
 
-        except Exception:
+            forecast_prompt = f"""
+            You are a business analyst assistant. A user is planning a digital service with the following inputs:
+
+            - Type of Service: {service_type}
+            - Nature of Service: {service_nature}
+            - Deployment Model: {deployment_model}
+            - Target Regions: {regions}
+            - Monetization Model: {monetization_model}
+            - Forecast Duration: 12 months
+
+            Generate a detailed subscriber forecast including:
+            - Total Monthly Active Users
+            - Churn Rate (Monthly)
+            - Monthly Net Growth
+            - Estimated Monthly Revenue
+
+            Use typical conversion rates and churn assumptions based on the monetization model provided.
+            Display the output in a 12-row table (1 per month). Base your assumptions on known regional trends.
+
+            If model is freemium, consider trial conversion rate. If paid-only, factor in higher churn at start.
+            """
+
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are an expert business forecasting assistant."},
+                    {"role": "user", "content": forecast_prompt}
+                ]
+            )
+
+            forecast_result = response.choices[0].message.content
+            st.session_state["forecast_output"] = forecast_result
+            st.session_state["forecast_done"] = True
+
+            st.markdown("---")
+            st.subheader("📈 Forecast Output")
+            st.markdown(forecast_result)
+
+        except Exception as e:
+            st.error(f"Error generating forecast: {e}")
+
+# --- Refinement Section ---
+if st.session_state.get("forecast_done"):
+    st.markdown("---")
+    st.subheader("🔁 Refine the Forecast")
+
+    ref_input = st.text_area("Optional: Share an example or feedback to refine results")
+    example_file = st.file_uploader("Or upload a sample reference (CSV/XLSX)", type=["csv", "xlsx"])
+
+    if st.button("Update Forecast"):
+        with st.spinner("Updating forecast based on feedback..."):
             try:
-                # If markdown table
-                df = pd.read_fwf(pd.compat.StringIO(raw_output))
+                file_summary = ""
+                if example_file is not None:
+                    df_example = pd.read_csv(example_file) if example_file.name.endswith(".csv") else pd.read_excel(example_file)
+                    file_summary = df_example.head().to_string()
+
+                refine_prompt = f"""
+                Revise the following forecast based on this user feedback: '{ref_input}'
+                {f"Here is a sample reference:
+{file_summary}" if file_summary else ""}
+
+                The original forecast was:
+                {st.session_state['forecast_output']}
+                """
+
+                refined_response = openai.ChatCompletion.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": "You are an expert business forecasting assistant."},
+                        {"role": "user", "content": refine_prompt}
+                    ]
+                )
+
+                refined_output = refined_response.choices[0].message.content
+                st.markdown("### 🔄 Updated Forecast")
+                st.markdown(refined_output)
+
             except Exception as e:
-                st.error("⚠️ Could not parse GPT output. Please try again or check the response format.")
-                st.text_area("Raw Output", raw_output)
-                st.stop()
-
-        # Display Table
-        st.dataframe(df)
-
-        # Show Charts
-        fig = px.line(df, x="Month", y=["Subscribers", "Revenue"], markers=True, title="Subscribers & Revenue Over Time")
-        st.plotly_chart(fig, use_container_width=True)
-
-        # Download Excel
-        st.subheader("⬇️ Download Forecast")
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df.to_excel(writer, index=False, sheet_name='Forecast')
-        st.download_button("Download Excel", data=output.getvalue(), file_name="forecast.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                st.error(f"Error updating forecast: {e}")
