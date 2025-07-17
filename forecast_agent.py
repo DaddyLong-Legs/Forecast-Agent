@@ -145,18 +145,26 @@ if st.button("Generate Forecast"):
 
             for col in df.columns:
                 col_lower = col.lower()
-                if "revenue" in col_lower:
+                if "revenue" in col_lower and expected_cols["Monthly Revenue (local currency)"] is None:
                     expected_cols["Monthly Revenue (local currency)"] = col
-                elif "paying" in col_lower:
+                elif "paying" in col_lower and expected_cols["Paying Users"] is None:
                     expected_cols["Paying Users"] = col
-                elif "churn" in col_lower:
+                elif "churn" in col_lower and expected_cols["Estimated Churn"] is None:
                     expected_cols["Estimated Churn"] = col
 
             plot_columns = [col for col in expected_cols.values() if col is not None]
 
             if len(plot_columns) >= 2:
-                fig, ax = plt.subplots()
-                df.plot(x=df.columns[0], y=plot_columns, ax=ax)
+                fig, ax = plt.subplots(figsize=(10, 5))
+
+                for col in plot_columns:
+                    ax.plot(df[df.columns[0]], df[col], label=col, marker='o')
+
+                ax.set_title("📊 Forecast Overview", fontsize=14)
+                ax.set_xlabel(df.columns[0])
+                ax.set_ylabel("Value")
+                ax.grid(True, linestyle='--', alpha=0.5)
+                ax.legend()
                 st.pyplot(fig)
             else:
                 st.warning("Not enough data to plot forecast. Please check the forecast format.")
