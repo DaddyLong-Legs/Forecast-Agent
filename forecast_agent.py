@@ -79,14 +79,17 @@ if st.session_state.get("forecast_done"):
                     df_example = pd.read_csv(example_file) if example_file.name.endswith(".csv") else pd.read_excel(example_file)
                     file_summary = df_example.head().to_string()
 
-                refine_prompt = f"""
-                Revise the following forecast based on this user feedback: '{ref_input}'
-                {f"Here is a sample reference:
-{file_summary}" if file_summary else ""}
+                refine_prompt = """
+                Revise the following forecast based on this user feedback: '{}'
+                {}
 
                 The original forecast was:
-                {st.session_state['forecast_output']}
-                """
+                {}
+                """.format(
+                    ref_input,
+                    f"Here is a sample reference:\n{file_summary}" if file_summary else "",
+                    st.session_state['forecast_output']
+                )
 
                 refined_response = openai.ChatCompletion.create(
                     model="gpt-4",
