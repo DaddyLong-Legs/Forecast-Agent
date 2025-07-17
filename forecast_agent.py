@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import openai
 import os
+import io
+import matplotlib.pyplot as plt
 
 # Set page configuration
 st.set_page_config(page_title="Business Forecasting Agent", layout="wide")
@@ -75,25 +77,15 @@ if st.button("Generate Forecast"):
             - Subscription Price: {subscription_price} (local currency)
             - Forecast Duration: 12 months
 
-            Generate a detailed subscriber forecast including:
-            - Total Monthly Active Users
-            - Churn Rate (Monthly)
-            - Monthly Net Growth
-            - Estimated Monthly Revenue (in local currency of {country})
+            Generate a table with the following for each month:
+            - Month Number
+            - New Users from Promotions
+            - Paying Users
+            - Monthly Revenue (local currency)
+            - Estimated Churn
+            - Active Users
 
-            Assume that daily promotional bandwidth reflects the maximum number of new potential users who can be reached each day.
-            Multiply the bandwidth with the conversion rate to estimate new users, then apply charging success rate to compute paying users.
-            For subscription model:
-            - Daily: users are charged {subscription_price} every day
-            - Weekly: users are charged {subscription_price} every week
-            - Monthly: users are charged {subscription_price} every month
-
-            Incorporate this charging model and charging success rate into the monthly revenue forecasts.
-
-            Use public ARPU benchmarks of the selected mobile operator in the given country to improve estimate reliability.
-            Factor in the impact of promotional reach, price sensitivity, user churn/conversion, and monetization effectiveness.
-
-            Display the output in a 12-row table (1 per month). Base your assumptions on known telecom trends and available public operator data.
+            Include columns in a CSV-style output.
             """
 
             response = openai.ChatCompletion.create(
@@ -104,13 +96,34 @@ if st.button("Generate Forecast"):
                 ]
             )
 
-            forecast_result = response.choices[0].message.content
-            st.session_state["forecast_output"] = forecast_result
+            forecast_text = response.choices[0].message.content
+            st.session_state["forecast_output"] = forecast_text
             st.session_state["forecast_done"] = True
+
+            # Try parsing table into DataFrame
+            from io import StringIO
+            import re
+
+            # Extract CSV-style content
+            csv_like = re.findall(r"(?<=```)([\s\S]*?)(?=```)", forecast_text)
+            data = csv_like[0] if csv_like else forecast_text
+            df = pd.read_csv(StringIO(data), sep="," if "," in data else "\t")
+            st.session_state["forecast_df"] = df
 
             st.markdown("---")
             st.subheader("📈 Forecast Output")
-            st.markdown(forecast_result)
+            st.dataframe(df)
+
+            # Plotting
+            fig, ax = plt.subplots()
+            df.plot(x=df.columns[0], y=["Monthly Revenue (local currency)", "Paying Users", "Estimated Churn"], ax=ax)
+            st.pyplot(fig)
+
+            # Download
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df.to_excel(writer, index=False, sheet_name='Forecast')
+            st.download_button("📥 Download Forecast as Excel", data=output.getvalue(), file_name="forecast_output.xlsx")
 
         except Exception as e:
             st.error(f"Error generating forecast: {e}")
