@@ -136,54 +136,47 @@ if st.button("Generate Forecast"):
             st.dataframe(df)
 
             expected_cols = {
-    "Monthly Revenue (local currency)": None,
-    "Paying Users": None,
-    "Estimated Churn": None
-}
+                "Monthly Revenue (local currency)": None,
+                "Paying Users": None,
+                "Estimated Churn": None
+            }
 
-for col in df.columns:
-    col_norm = col.strip().lower()
-    if "revenue" in col_norm and expected_cols["Monthly Revenue (local currency)"] is None:
-        expected_cols["Monthly Revenue (local currency)"] = col
-    elif ("paying" in col_norm or "subscribers" in col_norm) and expected_cols["Paying Users"] is None:
-        expected_cols["Paying Users"] = col
-    elif "churn" in col_norm and expected_cols["Estimated Churn"] is None:
-        expected_cols["Estimated Churn"] = col
+            for col in df.columns:
+                col_norm = col.strip().lower()
+                if "revenue" in col_norm and expected_cols["Monthly Revenue (local currency)"] is None:
+                    expected_cols["Monthly Revenue (local currency)"] = col
+                elif ("paying" in col_norm or "subscribers" in col_norm) and expected_cols["Paying Users"] is None:
+                    expected_cols["Paying Users"] = col
+                elif "churn" in col_norm and expected_cols["Estimated Churn"] is None:
+                    expected_cols["Estimated Churn"] = col
 
-plot_columns = [col for col in expected_cols.values() if col is not None]
-time_col = df.columns[0]
+            plot_columns = [col for col in expected_cols.values() if col is not None]
+            time_col = df.columns[0]
 
-# Check if time column is actually usable
-if len(plot_columns) >= 2 and time_col in df.columns:
-    try:
-        # Ensure numeric values
-        for col in plot_columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
+            if len(plot_columns) >= 2 and time_col in df.columns:
+                try:
+                    for col in plot_columns:
+                        df[col] = pd.to_numeric(df[col], errors='coerce')
+                    df[time_col] = df[time_col].astype(str)
+                    df_plot = df[[time_col] + plot_columns].dropna()
 
-        # Ensure time column is string or datetime
-        df[time_col] = df[time_col].astype(str)
+                    if df_plot.empty:
+                        st.warning("⚠️ Forecast data is empty after cleaning. Cannot plot.")
+                    else:
+                        fig, ax = plt.subplots(figsize=(10, 5))
+                        for col in plot_columns:
+                            ax.plot(df_plot[time_col], df_plot[col], label=col, marker='o')
 
-        # Drop rows with missing values
-        df_plot = df[[time_col] + plot_columns].dropna()
-
-        if df_plot.empty:
-            st.warning("⚠️ Forecast data is empty after cleaning. Cannot plot.")
-        else:
-            fig, ax = plt.subplots(figsize=(10, 5))
-            for col in plot_columns:
-                ax.plot(df_plot[time_col], df_plot[col], label=col, marker='o')
-
-            ax.set_title("📊 Forecast Overview", fontsize=14)
-            ax.set_xlabel(time_col)
-            ax.set_ylabel("Value")
-            ax.grid(True, linestyle='--', alpha=0.5)
-            ax.legend()
-            st.pyplot(fig)
-    except Exception as e:
-        st.error(f"❌ Error during plotting: {e}")
-else:
-    st.warning("⚠️ Not enough data to plot forecast. Please check the forecast format.")
-
+                        ax.set_title("📊 Forecast Overview", fontsize=14)
+                        ax.set_xlabel(time_col)
+                        ax.set_ylabel("Value")
+                        ax.grid(True, linestyle='--', alpha=0.5)
+                        ax.legend()
+                        st.pyplot(fig)
+                except Exception as e:
+                    st.error(f"❌ Error during plotting: {e}")
+            else:
+                st.warning("⚠️ Not enough data to plot forecast. Please check the forecast format.")
 
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
