@@ -115,9 +115,36 @@ if st.button("Generate Forecast"):
             st.dataframe(df)
 
             # Plotting
-            fig, ax = plt.subplots()
-            df.plot(x=df.columns[0], y=["Monthly Revenue (local currency)", "Paying Users", "Estimated Churn"], ax=ax)
-            st.pyplot(fig)
+          # Preview columns
+st.write("Forecast Columns:", df.columns.tolist())
+
+# Normalize column names for plotting
+expected_cols = {
+    "Monthly Revenue (local currency)": None,
+    "Paying Users": None,
+    "Estimated Churn": None
+}
+
+# Try to match expected columns
+for col in df.columns:
+    col_lower = col.lower()
+    if "revenue" in col_lower:
+        expected_cols["Monthly Revenue (local currency)"] = col
+    elif "paying" in col_lower:
+        expected_cols["Paying Users"] = col
+    elif "churn" in col_lower:
+        expected_cols["Estimated Churn"] = col
+
+# Filter out missing ones
+plot_columns = [col for col in expected_cols.values() if col is not None]
+
+if len(plot_columns) >= 2:
+    fig, ax = plt.subplots()
+    df.plot(x=df.columns[0], y=plot_columns, ax=ax)
+    st.pyplot(fig)
+else:
+    st.warning("Not enough data to plot forecast. Please check the forecast format.")
+
 
             # Download
             output = io.BytesIO()
