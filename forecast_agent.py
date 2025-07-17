@@ -35,6 +35,7 @@ operators_by_country = {
 
 mobile_operator = st.selectbox("Mobile Operator", operators_by_country.get(country, []))
 monetization_model = st.selectbox("Monetization Model", ["Paid Subscription", "Freemium (Free Trial → Premium)", "Ad-supported", "Mixed"])
+daily_promo_bandwidth = st.number_input("Estimated Daily Promotional Bandwidth (e.g., SMS/Impressions)", min_value=0)
 
 # Submit button to run forecast
 if st.button("Generate Forecast"):
@@ -51,15 +52,19 @@ if st.button("Generate Forecast"):
             - Target Country: {country}
             - Mobile Operator: {mobile_operator}
             - Monetization Model: {monetization_model}
+            - Daily Promotional Bandwidth: {daily_promo_bandwidth}
             - Forecast Duration: 12 months
 
             Generate a detailed subscriber forecast including:
             - Total Monthly Active Users
             - Churn Rate (Monthly)
             - Monthly Net Growth
-            - Estimated Monthly Revenue
+            - Estimated Monthly Revenue (in local currency of {country})
 
-            Use typical conversion rates and churn assumptions based on the monetization model provided and public ARPU data for the mobile operator in the given country.
+            Use typical conversion rates and churn assumptions based on the monetization model provided, 
+            and public ARPU data for the mobile operator in the given country.
+            Consider the impact of the given promotional bandwidth on new subscriber acquisition.
+
             Display the output in a 12-row table (1 per month). Base your assumptions on known trends and public data where possible.
 
             If model is freemium, consider trial conversion rate. If paid-only, factor in higher churn at start.
