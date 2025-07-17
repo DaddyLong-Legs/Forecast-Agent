@@ -35,7 +35,13 @@ operators_by_country = {
     "Bangladesh": ["Grameenphone", "Robi", "Banglalink"]
 }
 
-mobile_operator = st.selectbox("Mobile Operator", operators_by_country.get(country, []))
+# Conditionally enable/disable mobile operator
+if deployment_model == "White Label":
+    mobile_operator = "Not Applicable"
+    st.selectbox("Mobile Operator", ["N/A"], disabled=True)
+else:
+    mobile_operator = st.selectbox("Mobile Operator", operators_by_country.get(country, []))
+
 monetization_model = st.selectbox("Monetization Model", ["Paid Subscription", "Freemium (Free Trial → Premium)", "Ad-supported", "Mixed"])
 daily_promo_bandwidth = st.number_input("Estimated Daily Promotional Bandwidth (e.g., SMS/Impressions)", min_value=0)
 
