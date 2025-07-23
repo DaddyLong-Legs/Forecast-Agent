@@ -52,10 +52,10 @@ def create_pdf_doc(text):
 
 # Helper to send email
 def send_email(receiver_email, subject, body, attachments=[]):
-    sender_email = os.getenv("SMTP_SENDER_EMAIL")
-    sender_password = os.getenv("SMTP_SENDER_PASSWORD")
-    smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-    smtp_port = int(os.getenv("SMTP_PORT", 587))
+    sender_email = "awais@planetbeyond.co.uk"
+    sender_password = "rzzk qtxh hraq kdeu"
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 587
 
     msg = MIMEMultipart()
     msg['From'] = sender_email
@@ -69,10 +69,14 @@ def send_email(receiver_email, subject, body, attachments=[]):
             part['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
             msg.attach(part)
 
-    with smtplib.SMTP(smtp_server, smtp_port) as server:
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.send_message(msg)
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+    except smtplib.SMTPAuthenticationError as auth_err:
+        raise RuntimeError("Authentication failed. Please check your SMTP credentials.") from auth_err
 
 # UI Layout
 st.title("📊 Business Assistant Suite")
