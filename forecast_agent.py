@@ -197,6 +197,8 @@ with tab1:
                 subscribers = net_subs
 
             df_forecast = pd.DataFrame(forecast_data)
+            df_forecast["MonthNumber"] = df_forecast["Month"].str.extract(r'(\d+)').astype(int)
+            df_forecast = df_forecast.sort_values("MonthNumber")
             st.subheader("12-Month Forecast Summary")
             st.line_chart(data=df_forecast.set_index("Month"))
 
@@ -206,11 +208,11 @@ with tab1:
             **Charging Success Rate:** {charging_success}%
             """)
 
-            csv = df_forecast.to_csv(index=False).encode('utf-8')
+            csv = df_forecast.drop(columns=["MonthNumber"]).to_csv(index=False).encode('utf-8')
             st.download_button("\U0001F4E5 Download Forecast CSV", csv, "forecast_12_months.csv", "text/csv")
 
             excel_buffer = pd.ExcelWriter("/tmp/forecast_12_months.xlsx", engine='xlsxwriter')
-            df_forecast.to_excel(excel_buffer, index=False, sheet_name="Forecast")
+            df_forecast.drop(columns=["MonthNumber"]).to_excel(excel_buffer, index=False, sheet_name="Forecast")
             excel_buffer.close()
 
             with open("/tmp/forecast_12_months.xlsx", "rb") as f:
