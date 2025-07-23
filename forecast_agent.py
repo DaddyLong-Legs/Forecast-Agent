@@ -29,7 +29,6 @@ with tab2:
         st.session_state.logo_file = logo_file
     st.session_state.company_name = company_name
 
-    # Sample quotation data generator (replace with real logic)
     def generate_quotation(client_name, poc_name, poc_email, project_days, daily_rate, support_cost):
         development_cost = project_days * daily_rate
         deployment_cost = round(development_cost * 0.2)
@@ -55,7 +54,6 @@ Itemized Cost:
 """
         return quotation_text, total_cost
 
-    # Helper to download Word file
     def create_word_doc(text):
         doc = Document()
         for line in text.split('\n'):
@@ -64,7 +62,6 @@ Itemized Cost:
         doc.save(file_path)
         return file_path
 
-    # Helper to download PDF file
     def create_pdf_doc(text):
         pdf = FPDF()
         pdf.add_page()
@@ -83,7 +80,6 @@ Itemized Cost:
         pdf.output(file_path)
         return file_path
 
-    # Helper to send email
     def send_email(receiver_email, subject, body, attachments=[]):
         sender_email = "awais@planetbeyond.co.uk"
         sender_password = "rzzk qtxh hraq kdeu"
@@ -155,10 +151,10 @@ with tab1:
     st.header("\U0001F4C8 Forecasting Agent")
 
     st.subheader("Service Configuration")
-    service_type = st.selectbox("Type of Service", ["Legacy", "New"])
+    service_type = st.selectbox("Service Type", ["VAS", "Gaming", "IVR", "Other"])
     operator_type = st.selectbox("Operator Type", ["Operator", "Aggregator"])
-    country = st.text_input("Country", value="Pakistan")
-    operator = st.text_input("Operator Name", value="Telenor")
+    region = st.selectbox("Region", ["Pakistan", "UAE", "KSA", "Egypt", "South Africa"])
+    operator = st.selectbox("Operator Name", ["Telenor", "Jazz", "Zong", "Ufone"])
 
     st.subheader("Conversion & Revenue Inputs")
     charging_success = st.slider("Charging Success Rate (%)", 0, 100, 8)
@@ -175,16 +171,16 @@ with tab1:
             net_subs = subscribers - churn
             revenue = net_subs * price_per_day
 
-            forecast_data = {
-                "Month": ["Month 1"],
-                "Subscribers": [subscribers],
-                "Churn": [churn],
-                "Revenue": [revenue]
-            }
-
             st.subheader("Forecast Summary")
-            st.write(forecast_data)
+            st.markdown("""
+            | Metric       | Value |
+            |--------------|--------|
+            | Subscribers  | {0}   |
+            | Churn        | {1}   |
+            | Net Subs     | {2}   |
+            | Revenue      | {3}   |
+            """.format(subscribers, churn, net_subs, revenue))
 
-            st.bar_chart({"Revenue": forecast_data["Revenue"]})
+            st.bar_chart({"Revenue": [revenue]})
         except Exception as e:
             st.error(f"Forecast generation failed: {e}")
