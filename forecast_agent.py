@@ -153,4 +153,38 @@ Itemized Cost:
 
 with tab1:
     st.header("\U0001F4C8 Forecasting Agent")
-    st.info("Forecasting Agent UI is coming soon. Please stay tuned!")
+
+    st.subheader("Service Configuration")
+    service_type = st.selectbox("Type of Service", ["Legacy", "New"])
+    operator_type = st.selectbox("Operator Type", ["Operator", "Aggregator"])
+    country = st.text_input("Country", value="Pakistan")
+    operator = st.text_input("Operator Name", value="Telenor")
+
+    st.subheader("Conversion & Revenue Inputs")
+    charging_success = st.slider("Charging Success Rate (%)", 0, 100, 8)
+    onboarding_success = st.slider("Onboarding Success from Promotions (%)", 0, 100, 2)
+    promotional_bandwidth = st.number_input("Daily Promotional Bandwidth", min_value=0, value=1_000_000)
+
+    subscription_model = st.selectbox("Subscription Model", ["Daily", "Weekly", "Monthly"])
+    price_per_day = st.number_input("Price per Subscription Day", min_value=0, value=3)
+
+    if st.button("Generate Forecast"):
+        try:
+            subscribers = int(promotional_bandwidth * (onboarding_success / 100))
+            churn = int(subscribers * 0.1)
+            net_subs = subscribers - churn
+            revenue = net_subs * price_per_day
+
+            forecast_data = {
+                "Month": ["Month 1"],
+                "Subscribers": [subscribers],
+                "Churn": [churn],
+                "Revenue": [revenue]
+            }
+
+            st.subheader("Forecast Summary")
+            st.write(forecast_data)
+
+            st.bar_chart({"Revenue": forecast_data["Revenue"]})
+        except Exception as e:
+            st.error(f"Forecast generation failed: {e}")
