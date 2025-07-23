@@ -16,18 +16,26 @@ if "quotation_text" not in st.session_state:
 
 # Sample quotation data generator (replace with real logic)
 def generate_quotation(client_name, poc_name, poc_email, project_days, daily_rate, support_cost):
-    total_cost = project_days * daily_rate + support_cost
+    development_cost = project_days * daily_rate
+    deployment_cost = round(development_cost * 0.2)  # Example 20% of dev cost
+    total_cost = development_cost + deployment_cost + support_cost
+
     quotation_text = f"""
-    Quotation for {client_name}
+Quotation for {client_name}
 
-    Point of Contact: {poc_name} ({poc_email})
+Point of Contact: {poc_name} ({poc_email})
 
-    Itemized Cost:
-    - Development Days: {project_days} days @ {daily_rate}/day = {project_days * daily_rate}
-    - Annual Support and Maintenance: {support_cost}
-
-    Total Quotation: {total_cost}
-    """
+Itemized Cost:
++-----------------------------+--------------------------+
+| Item                       | Cost (in local currency) |
++-----------------------------+--------------------------+
+| Development                | {development_cost:<24} |
+| Deployment                 | {deployment_cost:<24} |
+| Annual Support & Maintenance | {support_cost:<24} |
++-----------------------------+--------------------------+
+| Total                      | {total_cost:<24} |
++-----------------------------+--------------------------+
+"""
     return quotation_text, total_cost
 
 # Helper to download Word file
@@ -64,10 +72,11 @@ def send_email(receiver_email, subject, body, attachments=[]):
     msg.attach(MIMEText(body, 'plain'))
 
     for file_path in attachments:
-        with open(file_path, "rb") as f:
-            part = MIMEApplication(f.read(), Name=os.path.basename(file_path))
-            part['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
-            msg.attach(part)
+        if file_path.endswith(".pdf"):  # only attach PDF
+            with open(file_path, "rb") as f:
+                part = MIMEApplication(f.read(), Name=os.path.basename(file_path))
+                part['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
+                msg.attach(part)
 
     try:
         with smtplib.SMTP(smtp_server, smtp_port) as server:
@@ -115,7 +124,7 @@ if st.session_state.quotation_text:
                 receiver_email=st.session_state.poc_email,
                 subject=f"Quotation from Business Assistant Suite - {st.session_state.client_name}",
                 body=st.session_state.quotation_text,
-                attachments=[word_path, pdf_path]
+                attachments=[pdf_path]  # Only PDF is emailed
             )
             st.success(f"Quotation emailed to {st.session_state.poc_email} successfully!")
         except Exception as e:
