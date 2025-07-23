@@ -4,3 +4,4 @@ pandas
 plotly
 xlsxwriter
 matplotlib
+python-docx
