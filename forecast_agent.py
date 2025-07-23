@@ -153,15 +153,19 @@ with tab1:
     st.subheader("Service Configuration")
     service_group = st.selectbox("Service Group", ["Legacy (SMS, IVR, USSD)", "Digital (Web, Mobile App)"])
     is_telco_branded = st.radio("Branding Type", ["Telco-branded", "White-label"])
-    operator_type = st.selectbox("Operator Type", ["Operator", "Aggregator"])
+
+    if is_telco_branded == "Telco-branded":
+        operator = st.selectbox("Operator Name", ["Telenor", "Jazz", "Zong", "Ufone"])
+    else:
+        operator = None
+
     region = st.selectbox("Region", ["Pakistan", "UAE", "KSA", "Egypt", "South Africa"])
-    operator = st.selectbox("Operator Name", ["Telenor", "Jazz", "Zong", "Ufone"])
     nature_of_service = st.selectbox("Nature of Service", ["Subscription Based", "One-time", "Freemium", "Ad Supported"])
     category = st.selectbox("Category", ["Entertainment", "Religious", "Informational", "Games", "Utility", "Music", "Education"])
 
     st.subheader("Conversion & Revenue Inputs")
+    opt_in_percentage = st.slider("Opt In Percentage (%)", 0, 100, 2)
     charging_success = st.slider("Charging Success Rate (%)", 0, 100, 8)
-    onboarding_success = st.slider("Onboarding Success from Promotions (%)", 0, 100, 2)
     promotional_bandwidth = st.number_input("Daily Promotional Bandwidth", min_value=0, value=1_000_000)
 
     subscription_model = st.selectbox("Subscription Model", ["Daily", "Weekly", "Monthly"])
@@ -169,7 +173,7 @@ with tab1:
 
     if st.button("Generate Forecast"):
         try:
-            subscribers = int(promotional_bandwidth * (onboarding_success / 100))
+            subscribers = int(promotional_bandwidth * (opt_in_percentage / 100))
             churn = int(subscribers * 0.1)
             net_subs = subscribers - churn
             revenue = net_subs * price_per_day
