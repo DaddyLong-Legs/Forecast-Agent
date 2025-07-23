@@ -23,7 +23,7 @@ with tab2:
     st.header("\U0001F4B0 Quotation Generator")
 
     st.subheader("Company Branding")
-    company_name = st.text_input("Company Name", value=st.session_state.get("company_name", ""))
+    company_name = st.text_input("Company Name", value=st.session_state.company_name)
     logo_file = st.file_uploader("Upload Company Logo (PNG or JPG)", type=["png", "jpg", "jpeg"])
     if logo_file:
         st.session_state.logo_file = logo_file
@@ -70,7 +70,7 @@ Itemized Cost:
         pdf.add_page()
         pdf.set_font("Arial", size=12)
 
-        if st.session_state.logo_file:
+        if "logo_file" in st.session_state and st.session_state.logo_file:
             logo_path = "/tmp/company_logo.png"
             with open(logo_path, "wb") as f:
                 f.write(st.session_state.logo_file.read())
