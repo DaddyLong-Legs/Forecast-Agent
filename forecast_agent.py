@@ -13,16 +13,21 @@ if "quotation_text" not in st.session_state:
     st.session_state.quotation_text = ""
     st.session_state.poc_email = ""
     st.session_state.client_name = ""
-
-# Upload logo
-st.sidebar.title("Company Branding")
-logo_file = st.sidebar.file_uploader("Upload Company Logo (PNG or JPG)", type=["png", "jpg", "jpeg"])
+    st.session_state.logo_file = None
+    st.session_state.company_name = "Planet Beyond Pakistan (Pvt.) Ltd."
 
 # Tab layout
 tab1, tab2 = st.tabs(["Forecasting Agent", "Quotation Generator"])
 
 with tab2:
     st.header("\U0001F4B0 Quotation Generator")
+
+    st.subheader("Company Branding")
+    company_name = st.text_input("Company Name", value=st.session_state.company_name)
+    logo_file = st.file_uploader("Upload Company Logo (PNG or JPG)", type=["png", "jpg", "jpeg"])
+    if logo_file:
+        st.session_state.logo_file = logo_file
+    st.session_state.company_name = company_name
 
     # Sample quotation data generator (replace with real logic)
     def generate_quotation(client_name, poc_name, poc_email, project_days, daily_rate, support_cost):
@@ -31,7 +36,7 @@ with tab2:
         total_cost = development_cost + deployment_cost + support_cost
 
         quotation_text = f"""
-Planet Beyond Pakistan (Pvt.) Ltd.
+{st.session_state.company_name}
 
 Quotation for {client_name}
 
@@ -65,10 +70,10 @@ Itemized Cost:
         pdf.add_page()
         pdf.set_font("Arial", size=12)
 
-        if logo_file:
+        if st.session_state.logo_file:
             logo_path = "/tmp/company_logo.png"
             with open(logo_path, "wb") as f:
-                f.write(logo_file.read())
+                f.write(st.session_state.logo_file.read())
             pdf.image(logo_path, x=10, y=8, w=40)
             pdf.ln(30)
 
@@ -138,7 +143,7 @@ Itemized Cost:
             try:
                 send_email(
                     receiver_email=st.session_state.poc_email,
-                    subject=f"Quotation from Planet Beyond Pakistan (Pvt.) Ltd. - {st.session_state.client_name}",
+                    subject=f"Quotation from {st.session_state.company_name} - {st.session_state.client_name}",
                     body=st.session_state.quotation_text,
                     attachments=[pdf_path]
                 )
