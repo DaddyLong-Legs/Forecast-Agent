@@ -193,4 +193,51 @@ if tool == "Forecasting Agent":
 
 elif tool == "Quotation Generator":
     st.header("🧾 Cost Quotation Generator")
-    st.info("This section will let you generate a quotation based on provided service details. Coming next...")
+    st.markdown("### Fill in the following details to generate a commercial quotation.")
+
+    client_name = st.text_input("Client Name")
+    service_description = st.text_area("Brief Description of the Service")
+    country = st.selectbox("Country", ["Pakistan", "UAE", "Saudi Arabia", "Qatar", "Egypt", "Jordan", "Kuwait", "Bahrain", "Oman", "India", "Bangladesh"])
+    operator = st.text_input("Mobile Operator (if applicable)")
+    subscription_price = st.number_input("Subscription Price (local currency)", min_value=0.0, format="%.2f")
+    revenue_share = st.slider("Proposed Revenue Share (our %)", 0, 100, 50)
+    expected_subscribers = st.number_input("Expected Subscriber Base", min_value=0)
+
+    if st.button("Generate Quotation"):
+        with st.spinner("Generating quotation..."):
+            try:
+                openai.api_key = os.getenv("OPENAI_API_KEY")
+
+                quote_prompt = f"""
+                You are a business consultant preparing a quotation. Based on the following:
+                - Client Name: {client_name}
+                - Country: {country}
+                - Mobile Operator: {operator}
+                - Service Description: {service_description}
+                - Subscription Price: {subscription_price} (local currency)
+                - Revenue Share (our side): {revenue_share}%
+                - Expected Subscribers: {expected_subscribers}
+
+                Prepare a professional commercial quotation in business English, including:
+                - A brief intro
+                - Summary of the service
+                - Commercial proposal (revenue share, price point)
+                - Disclaimer for custom terms and actual negotiations
+                """
+
+                response = openai.ChatCompletion.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": "You are an experienced commercial proposals specialist."},
+                        {"role": "user", "content": quote_prompt}
+                    ]
+                )
+
+                quotation_text = response.choices[0].message.content
+                st.markdown("### 🧾 Generated Quotation")
+                st.markdown(quotation_text)
+
+                st.download_button("📄 Download Quotation (TXT)", quotation_text.encode(), file_name="quotation.txt")
+
+            except Exception as e:
+                st.error(f"❌ Error generating quotation: {e}")
