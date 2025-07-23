@@ -63,29 +63,24 @@ tab1, tab2 = st.tabs(["Forecasting Agent", "Quotation Generator"])
 
 with tab2:
     st.header("\U0001F4C4 Quotation Generator")
-    st.text_area("Quotation Text", key="quotation_text")
     st.text_input("Client Name", key="client_name")
     st.text_input("POC Email", key="poc_email")
     logo = st.file_uploader("Upload Company Logo", type=["png", "jpg", "jpeg"], key="logo_file")
-
-    if st.button("Generate DOCX Quotation"):
-        doc = Document()
-        doc.add_heading(f"Quotation for {st.session_state.client_name}", 0)
-        doc.add_paragraph(st.session_state.quotation_text)
-        doc_path = "/tmp/quotation.docx"
-        doc.save(doc_path)
-        with open(doc_path, "rb") as file:
-            st.download_button("\U0001F4E5 Download Quotation DOCX", file, file_name="quotation.docx")
-
-    if st.button("Generate PDF Quotation"):
+    st.text_area("Quotation Description", key="quotation_text")
+    
+    if st.button("Generate Quotation PDF"):
         pdf = FPDF()
         pdf.add_page()
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(200, 10, txt=f"Quotation for {st.session_state.client_name}", ln=True, align='C')
+        pdf.ln(10)
         pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, st.session_state.quotation_text)
-        pdf_path = "/tmp/quotation.pdf"
+        for line in st.session_state.quotation_text.split('\n'):
+            pdf.multi_cell(0, 10, txt=line)
+        pdf_path = "/tmp/quotation_final.pdf"
         pdf.output(pdf_path)
-        with open(pdf_path, "rb") as file:
-            st.download_button("\U0001F4E5 Download Quotation PDF", file, file_name="quotation.pdf")
+        with open(pdf_path, "rb") as f:
+            st.download_button("\U0001F4E5 Download Quotation PDF", f, file_name="quotation.pdf")
 
     if st.button("Email Quotation"):
         try:
@@ -94,17 +89,22 @@ with tab2:
             msg = MIMEMultipart()
             msg['From'] = sender_email
             msg['To'] = receiver_email
-            msg['Subject'] = "Quotation from " + st.session_state.company_name
+            msg['Subject'] = f"Quotation from {st.session_state.company_name}"
 
-            body = f"Hi {st.session_state.client_name},\n\nPlease find attached the quotation."
+            body = f"Hi {st.session_state.client_name},\n\nPlease find the attached quotation."
             msg.attach(MIMEText(body, 'plain'))
 
             pdf = FPDF()
             pdf.add_page()
+            pdf.set_font("Arial", 'B', 16)
+            pdf.cell(200, 10, txt=f"Quotation for {st.session_state.client_name}", ln=True, align='C')
+            pdf.ln(10)
             pdf.set_font("Arial", size=12)
-            pdf.multi_cell(0, 10, st.session_state.quotation_text)
-            pdf_path = "/tmp/email_quotation.pdf"
+            for line in st.session_state.quotation_text.split('\n'):
+                pdf.multi_cell(0, 10, txt=line)
+            pdf_path = "/tmp/quotation_email.pdf"
             pdf.output(pdf_path)
+
             with open(pdf_path, "rb") as f:
                 part = MIMEApplication(f.read(), Name="quotation.pdf")
                 part['Content-Disposition'] = 'attachment; filename="quotation.pdf"'
@@ -117,7 +117,7 @@ with tab2:
 
             st.success("Quotation emailed successfully.")
         except Exception as e:
-            st.error(f"Email failed: {e}")
+            st.error(f"Failed to send email: {e}")
 
 with tab1:
     st.header("\U0001F4C8 Forecasting Agent")
@@ -127,7 +127,6 @@ with tab1:
     is_telco_branded = st.radio("Branding Type", ["Telco-branded", "White-label"])
 
     region = st.selectbox("Country/Region", list(EXTERNAL_DATA.keys()))
-
     operator_options = {k: list(v.keys()) for k, v in EXTERNAL_DATA.items()}
 
     if is_telco_branded == "Telco-branded":
@@ -173,7 +172,7 @@ with tab1:
 
                 # More realistic retention modeling
                 if month > retention_window:
-                    churned_users = retained_by_month[month - retention_window - 1]
+                    churned_users = retained_by_month[month - retention_window - 1] * churn_rate
                 else:
                     churned_users = 0
 
@@ -185,10 +184,10 @@ with tab1:
                 forecast_data.append({
                     "Month": f"Month {month}",
                     "MonthNumber": month,
-                    "New Users": monthly_acquired,
-                    "Churned Users": churned_users,
-                    "Total Subscribers": active_users,
-                    "Revenue": revenue
+                    "New Users": int(monthly_acquired),
+                    "Churned Users": int(churned_users),
+                    "Total Subscribers": int(active_users),
+                    "Revenue": round(revenue, 2)
                 })
 
             df_forecast = pd.DataFrame(forecast_data)
