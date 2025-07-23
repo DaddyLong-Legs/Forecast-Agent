@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 import os
+import pandas as pd
 
 # Session state initialization
 if "quotation_text" not in st.session_state:
@@ -183,21 +184,37 @@ with tab1:
 
     if st.button("Generate Forecast"):
         try:
+            forecast_data = []
             subscribers = int(promotional_bandwidth * (opt_in_percentage / 100))
-            churn = int(subscribers * 0.1)
-            net_subs = subscribers - churn
-            revenue = net_subs * price_per_day
+            churn_rate = 0.1  # 10% monthly churn
 
-            st.subheader("Forecast Summary")
-            st.markdown("""
-            | Metric       | Value |
-            |--------------|--------|
-            | Subscribers  | {0}   |
-            | Churn        | {1}   |
-            | Net Subs     | {2}   |
-            | Revenue      | {3}   |
-            """.format(subscribers, churn, net_subs, revenue))
+            for month in range(1, 13):
+                churn = int(subscribers * churn_rate)
+                net_subs = subscribers - churn
+                revenue = net_subs * price_per_day * charging_success / 100
 
-            st.bar_chart({"Revenue": [revenue]})
+                forecast_data.append({"Month": f"Month {month}", "Revenue": revenue})
+                subscribers = net_subs
+
+            df_forecast = pd.DataFrame(forecast_data)
+            st.subheader("12-Month Forecast Summary")
+            st.line_chart(data=df_forecast.set_index("Month"))
+
+            st.markdown(f"""
+            **Initial Subscribers:** {int(promotional_bandwidth * (opt_in_percentage / 100)):,}  
+            **Monthly Churn Rate:** {int(churn_rate * 100)}%  
+            **Charging Success Rate:** {charging_success}%
+            """)
+
+            csv = df_forecast.to_csv(index=False).encode('utf-8')
+            st.download_button("\U0001F4E5 Download Forecast CSV", csv, "forecast_12_months.csv", "text/csv")
+
+            excel_buffer = pd.ExcelWriter("/tmp/forecast_12_months.xlsx", engine='xlsxwriter')
+            df_forecast.to_excel(excel_buffer, index=False, sheet_name="Forecast")
+            excel_buffer.close()
+
+            with open("/tmp/forecast_12_months.xlsx", "rb") as f:
+                st.download_button("\U0001F4E5 Download Forecast Excel", f, "forecast_12_months.xlsx")
+
         except Exception as e:
             st.error(f"Forecast generation failed: {e}")
