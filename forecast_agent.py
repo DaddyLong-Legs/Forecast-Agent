@@ -185,22 +185,27 @@ with tab1:
     if st.button("Generate Forecast"):
         try:
             forecast_data = []
-            subscribers = int(promotional_bandwidth * (opt_in_percentage / 100))
             churn_rate = 0.1  # 10% monthly churn
+            daily_new_users = int(promotional_bandwidth * (opt_in_percentage / 100))
+            subscribers = 0
 
             for month in range(1, 13):
+                monthly_acquired = daily_new_users * 30
+                subscribers += monthly_acquired
+
                 churn = int(subscribers * churn_rate)
-                net_subs = subscribers - churn
-                revenue = net_subs * price_per_day * charging_success / 100
+                subscribers -= churn
+
+                revenue = subscribers * price_per_day * 30 * charging_success / 100
 
                 forecast_data.append({
                     "Month": f"Month {month}",
                     "MonthNumber": month,
-                    "Total Subscribers": subscribers,
+                    "New Users": monthly_acquired,
                     "Churned Users": churn,
+                    "Total Subscribers": subscribers,
                     "Revenue": revenue
                 })
-                subscribers = net_subs
 
             df_forecast = pd.DataFrame(forecast_data)
             df_forecast = df_forecast.sort_values("MonthNumber")
@@ -211,7 +216,7 @@ with tab1:
             st.dataframe(df_forecast.drop(columns=["MonthNumber"]))
 
             st.markdown(f"""
-            **Initial Subscribers:** {int(promotional_bandwidth * (opt_in_percentage / 100)):,}  
+            **Daily New Users:** {daily_new_users:,}  
             **Monthly Churn Rate:** {int(churn_rate * 100)}%  
             **Charging Success Rate:** {charging_success}%
             """)
