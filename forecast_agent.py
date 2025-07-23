@@ -154,12 +154,22 @@ with tab1:
     service_group = st.selectbox("Service Group", ["Legacy (SMS, IVR, USSD)", "Digital (Web, Mobile App)"])
     is_telco_branded = st.radio("Branding Type", ["Telco-branded", "White-label"])
 
+    region = st.selectbox("Country/Region", ["Pakistan", "UAE", "KSA", "Egypt", "South Africa"])
+
+    operator_options = {
+        "Pakistan": ["Telenor", "Jazz", "Zong", "Ufone"],
+        "UAE": ["Etisalat", "Du"],
+        "KSA": ["STC", "Mobily", "Zain"],
+        "Egypt": ["Vodafone Egypt", "Etisalat Misr", "Orange Egypt"],
+        "South Africa": ["Vodacom", "MTN", "Cell C"]
+    }
+
     if is_telco_branded == "Telco-branded":
-        operator = st.selectbox("Operator Name", ["Telenor", "Jazz", "Zong", "Ufone"])
+        operator = st.selectbox("Operator Name", operator_options.get(region, []))
     else:
+        st.selectbox("Operator Name", ["Not Applicable"], disabled=True)
         operator = None
 
-    region = st.selectbox("Region", ["Pakistan", "UAE", "KSA", "Egypt", "South Africa"])
     nature_of_service = st.selectbox("Nature of Service", ["Subscription Based", "One-time", "Freemium", "Ad Supported"])
     category = st.selectbox("Category", ["Entertainment", "Religious", "Informational", "Games", "Utility", "Music", "Education"])
 
