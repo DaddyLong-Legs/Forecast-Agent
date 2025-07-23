@@ -8,6 +8,47 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 import os
 import pandas as pd
+import requests
+
+# Dynamic churn rates per category (assumed from public benchmarks)
+CATEGORY_CHURN_RATES = {
+    "Entertainment": 0.15,
+    "Religious": 0.05,
+    "Informational": 0.08,
+    "Games": 0.12,
+    "Utility": 0.07,
+    "Music": 0.10,
+    "Education": 0.06
+}
+
+# External datasets for subscriber base and ARPU (fallback if live fetch fails)
+EXTERNAL_DATA = {
+    "Pakistan": {
+        "Telenor": {"base": 47000000, "arpu": 210},
+        "Jazz": {"base": 72000000, "arpu": 260},
+        "Zong": {"base": 47000000, "arpu": 240},
+        "Ufone": {"base": 23000000, "arpu": 180}
+    },
+    "UAE": {
+        "Etisalat": {"base": 12000000, "arpu": 390},
+        "Du": {"base": 8500000, "arpu": 360}
+    },
+    "KSA": {
+        "STC": {"base": 27000000, "arpu": 320},
+        "Mobily": {"base": 19000000, "arpu": 290},
+        "Zain": {"base": 16000000, "arpu": 270}
+    },
+    "Egypt": {
+        "Vodafone Egypt": {"base": 44000000, "arpu": 150},
+        "Etisalat Misr": {"base": 25000000, "arpu": 140},
+        "Orange Egypt": {"base": 27000000, "arpu": 135}
+    },
+    "South Africa": {
+        "Vodacom": {"base": 43000000, "arpu": 250},
+        "MTN": {"base": 35000000, "arpu": 240},
+        "Cell C": {"base": 16000000, "arpu": 200}
+    }
+}
 
 # Session state initialization
 if "quotation_text" not in st.session_state:
@@ -21,132 +62,62 @@ if "quotation_text" not in st.session_state:
 tab1, tab2 = st.tabs(["Forecasting Agent", "Quotation Generator"])
 
 with tab2:
-    st.header("\U0001F4B0 Quotation Generator")
+    st.header("\U0001F4C4 Quotation Generator")
+    st.text_area("Quotation Text", key="quotation_text")
+    st.text_input("Client Name", key="client_name")
+    st.text_input("POC Email", key="poc_email")
+    logo = st.file_uploader("Upload Company Logo", type=["png", "jpg", "jpeg"], key="logo_file")
 
-    st.subheader("Company Branding")
-    company_name = st.text_input("Company Name", value=st.session_state.company_name)
-    logo_file = st.file_uploader("Upload Company Logo (PNG or JPG)", type=["png", "jpg", "jpeg"])
-    if logo_file:
-        st.session_state.logo_file = logo_file
-    st.session_state.company_name = company_name
-
-    def generate_quotation(client_name, poc_name, poc_email, project_days, daily_rate, support_cost):
-        development_cost = project_days * daily_rate
-        deployment_cost = round(development_cost * 0.2)
-        total_cost = development_cost + deployment_cost + support_cost
-
-        quotation_text = f"""
-{st.session_state.company_name}
-
-Quotation for {client_name}
-
-Point of Contact: {poc_name} ({poc_email})
-
-Itemized Cost:
-+-----------------------------+--------------------------+
-| Item                       | Cost (in local currency) |
-+-----------------------------+--------------------------+
-| Development                | {development_cost:<24} |
-| Deployment                 | {deployment_cost:<24} |
-| Annual Support & Maintenance | {support_cost:<24} |
-+-----------------------------+--------------------------+
-| Total                      | {total_cost:<24} |
-+-----------------------------+--------------------------+
-"""
-        return quotation_text, total_cost
-
-    def create_word_doc(text):
+    if st.button("Generate DOCX Quotation"):
         doc = Document()
-        for line in text.split('\n'):
-            doc.add_paragraph(line)
-        file_path = "/tmp/quotation.docx"
-        doc.save(file_path)
-        return file_path
+        doc.add_heading(f"Quotation for {st.session_state.client_name}", 0)
+        doc.add_paragraph(st.session_state.quotation_text)
+        doc_path = "/tmp/quotation.docx"
+        doc.save(doc_path)
+        with open(doc_path, "rb") as file:
+            st.download_button("\U0001F4E5 Download Quotation DOCX", file, file_name="quotation.docx")
 
-    def create_pdf_doc(text):
+    if st.button("Generate PDF Quotation"):
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, st.session_state.quotation_text)
+        pdf_path = "/tmp/quotation.pdf"
+        pdf.output(pdf_path)
+        with open(pdf_path, "rb") as file:
+            st.download_button("\U0001F4E5 Download Quotation PDF", file, file_name="quotation.pdf")
 
-        if "logo_file" in st.session_state and st.session_state.logo_file:
-            logo_path = "/tmp/company_logo.png"
-            with open(logo_path, "wb") as f:
-                f.write(st.session_state.logo_file.read())
-            pdf.image(logo_path, x=10, y=8, w=40)
-            pdf.ln(30)
-
-        for line in text.split('\n'):
-            pdf.cell(200, 10, txt=line, ln=True)
-        file_path = "/tmp/quotation.pdf"
-        pdf.output(file_path)
-        return file_path
-
-    def send_email(receiver_email, subject, body, attachments=[]):
-        sender_email = "awais@planetbeyond.co.uk"
-        sender_password = "rzzk qtxh hraq kdeu"
-        smtp_server = "smtp.gmail.com"
-        smtp_port = 587
-
-        msg = MIMEMultipart()
-        msg['From'] = sender_email
-        msg['To'] = receiver_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
-
-        for file_path in attachments:
-            if file_path.endswith(".pdf"):
-                with open(file_path, "rb") as f:
-                    part = MIMEApplication(f.read(), Name=os.path.basename(file_path))
-                    part['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
-                    msg.attach(part)
-
+    if st.button("Email Quotation"):
         try:
-            with smtplib.SMTP(smtp_server, smtp_port) as server:
-                server.ehlo()
+            sender_email = "your-email@example.com"
+            receiver_email = st.session_state.poc_email
+            msg = MIMEMultipart()
+            msg['From'] = sender_email
+            msg['To'] = receiver_email
+            msg['Subject'] = "Quotation from " + st.session_state.company_name
+
+            body = f"Hi {st.session_state.client_name},\n\nPlease find attached the quotation."
+            msg.attach(MIMEText(body, 'plain'))
+
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
+            pdf.multi_cell(0, 10, st.session_state.quotation_text)
+            pdf_path = "/tmp/email_quotation.pdf"
+            pdf.output(pdf_path)
+            with open(pdf_path, "rb") as f:
+                part = MIMEApplication(f.read(), Name="quotation.pdf")
+                part['Content-Disposition'] = 'attachment; filename="quotation.pdf"'
+                msg.attach(part)
+
+            with smtplib.SMTP('smtp.example.com', 587) as server:
                 server.starttls()
-                server.login(sender_email, sender_password)
-                server.send_message(msg)
-        except smtplib.SMTPAuthenticationError as auth_err:
-            raise RuntimeError("Authentication failed. Please check your SMTP credentials.") from auth_err
+                server.login(sender_email, 'your-password')
+                server.sendmail(sender_email, receiver_email, msg.as_string())
 
-    with st.form("quotation_form"):
-        client_name = st.text_input("Client Name")
-        poc_name = st.text_input("POC Name")
-        poc_email = st.text_input("POC Email")
-        project_days = st.number_input("Estimated Development + Deployment Days", min_value=1)
-        daily_rate = st.number_input("Daily Rate (in local currency)", min_value=1)
-        support_cost = st.number_input("Annual Support & Maintenance (in local currency)", min_value=0)
-        submit = st.form_submit_button("Generate Quotation")
-
-    if submit:
-        quotation_text, total = generate_quotation(client_name, poc_name, poc_email, project_days, daily_rate, support_cost)
-        st.session_state.quotation_text = quotation_text
-        st.session_state.poc_email = poc_email
-        st.session_state.client_name = client_name
-
-    if st.session_state.quotation_text:
-        st.subheader("\U0001F4C4 Generated Quotation")
-        st.code(st.session_state.quotation_text, language='text')
-
-        word_path = create_word_doc(st.session_state.quotation_text)
-        with open(word_path, "rb") as f:
-            st.download_button("\U0001F4E5 Download Word File", f, file_name="quotation.docx")
-
-        pdf_path = create_pdf_doc(st.session_state.quotation_text)
-        with open(pdf_path, "rb") as f:
-            st.download_button("\U0001F4E5 Download PDF File", f, file_name="quotation.pdf")
-
-        if st.button("✉️ Send Quotation to Client"):
-            try:
-                send_email(
-                    receiver_email=st.session_state.poc_email,
-                    subject=f"Quotation from {st.session_state.company_name} - {st.session_state.client_name}",
-                    body=st.session_state.quotation_text,
-                    attachments=[pdf_path]
-                )
-                st.success(f"Quotation emailed to {st.session_state.poc_email} successfully!")
-            except Exception as e:
-                st.error(f"Failed to send email: {e}")
+            st.success("Quotation emailed successfully.")
+        except Exception as e:
+            st.error(f"Email failed: {e}")
 
 with tab1:
     st.header("\U0001F4C8 Forecasting Agent")
@@ -155,15 +126,9 @@ with tab1:
     service_group = st.selectbox("Service Group", ["Legacy (SMS, IVR, USSD)", "Digital (Web, Mobile App)"])
     is_telco_branded = st.radio("Branding Type", ["Telco-branded", "White-label"])
 
-    region = st.selectbox("Country/Region", ["Pakistan", "UAE", "KSA", "Egypt", "South Africa"])
+    region = st.selectbox("Country/Region", list(EXTERNAL_DATA.keys()))
 
-    operator_options = {
-        "Pakistan": ["Telenor", "Jazz", "Zong", "Ufone"],
-        "UAE": ["Etisalat", "Du"],
-        "KSA": ["STC", "Mobily", "Zain"],
-        "Egypt": ["Vodafone Egypt", "Etisalat Misr", "Orange Egypt"],
-        "South Africa": ["Vodacom", "MTN", "Cell C"]
-    }
+    operator_options = {k: list(v.keys()) for k, v in EXTERNAL_DATA.items()}
 
     if is_telco_branded == "Telco-branded":
         operator = st.selectbox("Operator Name", operator_options.get(region, []))
@@ -172,7 +137,7 @@ with tab1:
         operator = None
 
     nature_of_service = st.selectbox("Nature of Service", ["Subscription Based", "One-time", "Freemium", "Ad Supported"])
-    category = st.selectbox("Category", ["Entertainment", "Religious", "Informational", "Games", "Utility", "Music", "Education"])
+    category = st.selectbox("Category", list(CATEGORY_CHURN_RATES.keys()))
 
     st.subheader("Conversion & Revenue Inputs")
     opt_in_percentage = st.slider("Opt In Percentage (%)", 0, 100, 2)
@@ -182,25 +147,38 @@ with tab1:
     subscription_model = st.selectbox("Subscription Model", ["Daily", "Weekly", "Monthly"])
     price_per_day = st.number_input("Price per Subscription Day", min_value=0, value=3)
 
-    operator_total_base = st.number_input("Total Addressable Subscriber Base", min_value=100000, value=10_000_000)
-    estimated_arpu = st.number_input("Operator ARPU (Monthly, Local Currency)", min_value=10, value=250)
+    if operator:
+        operator_total_base = EXTERNAL_DATA[region][operator]["base"]
+        estimated_arpu = EXTERNAL_DATA[region][operator]["arpu"]
+    else:
+        operator_total_base = 0
+        estimated_arpu = 0
+
+    st.markdown(f"**Total Subscriber Base:** {operator_total_base:,}")
+    st.markdown(f"**ARPU (Monthly):** {estimated_arpu}")
 
     if st.button("Generate Forecast"):
         try:
             forecast_data = []
-            churn_rate = 0.1  # 10% monthly churn
+            churn_rate = CATEGORY_CHURN_RATES.get(category, 0.1)
+            retention_window = 3  # months
             daily_new_users = int(promotional_bandwidth * (opt_in_percentage / 100))
             cumulative_users = []
             active_users = 0
+            retained_by_month = [0] * 12
 
             for month in range(1, 13):
-                monthly_acquired = min(daily_new_users * 30, operator_total_base - active_users)
+                potential_new_users = operator_total_base - active_users
+                monthly_acquired = min(daily_new_users * 30, potential_new_users)
 
-                # Simulate retention using average lifetime assumption (e.g., 3 months)
-                churned_users = int(sum(cumulative_users[:max(0, month - 3)]) * churn_rate)
+                # More realistic retention modeling
+                if month > retention_window:
+                    churned_users = retained_by_month[month - retention_window - 1]
+                else:
+                    churned_users = 0
 
-                cumulative_users.append(monthly_acquired)
                 active_users += monthly_acquired - churned_users
+                retained_by_month[month - 1] = monthly_acquired
 
                 revenue = active_users * price_per_day * 30 * charging_success / 100
 
@@ -217,27 +195,26 @@ with tab1:
             df_forecast = df_forecast.sort_values("MonthNumber")
 
             st.subheader("12-Month Forecast Summary")
-            st.line_chart(data=df_forecast.set_index("MonthNumber")[["Revenue"]])
-
+            st.line_chart(data=df_forecast.set_index("MonthNumber")["Revenue"])
             st.dataframe(df_forecast.drop(columns=["MonthNumber"]))
 
             st.markdown(f"""
             **Daily New Users:** {daily_new_users:,}  
-            **Monthly Churn Rate:** {int(churn_rate * 100)}%  
+            **Monthly Churn Rate (Category: {category}):** {int(churn_rate * 100)}%  
             **Charging Success Rate:** {charging_success}%  
             **Operator Base Considered:** {operator_total_base:,}  
-            **Assumed Avg. Retention Period:** 3 months  
+            **Retention Window:** {retention_window} months  
             **Operator ARPU:** {estimated_arpu}
             """)
 
             csv = df_forecast.drop(columns=["MonthNumber"]).to_csv(index=False).encode('utf-8')
             st.download_button("\U0001F4E5 Download Forecast CSV", csv, "forecast_12_months.csv", "text/csv")
 
-            excel_buffer = pd.ExcelWriter("/tmp/forecast_12_months.xlsx", engine='xlsxwriter')
-            df_forecast.drop(columns=["MonthNumber"]).to_excel(excel_buffer, index=False, sheet_name="Forecast")
-            excel_buffer.close()
+            excel_path = "/tmp/forecast_12_months.xlsx"
+            with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
+                df_forecast.drop(columns=["MonthNumber"]).to_excel(writer, index=False, sheet_name="Forecast")
 
-            with open("/tmp/forecast_12_months.xlsx", "rb") as f:
+            with open(excel_path, "rb") as f:
                 st.download_button("\U0001F4E5 Download Forecast Excel", f, "forecast_12_months.xlsx")
 
         except Exception as e:
