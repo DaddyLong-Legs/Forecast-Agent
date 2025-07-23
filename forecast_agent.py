@@ -182,28 +182,34 @@ with tab1:
     subscription_model = st.selectbox("Subscription Model", ["Daily", "Weekly", "Monthly"])
     price_per_day = st.number_input("Price per Subscription Day", min_value=0, value=3)
 
+    operator_total_base = st.number_input("Total Addressable Subscriber Base", min_value=100000, value=10_000_000)
+    estimated_arpu = st.number_input("Operator ARPU (Monthly, Local Currency)", min_value=10, value=250)
+
     if st.button("Generate Forecast"):
         try:
             forecast_data = []
             churn_rate = 0.1  # 10% monthly churn
             daily_new_users = int(promotional_bandwidth * (opt_in_percentage / 100))
-            subscribers = 0
+            cumulative_users = []
+            active_users = 0
 
             for month in range(1, 13):
-                monthly_acquired = daily_new_users * 30
-                subscribers += monthly_acquired
+                monthly_acquired = min(daily_new_users * 30, operator_total_base - active_users)
 
-                churn = int(subscribers * churn_rate)
-                subscribers -= churn
+                # Simulate retention using average lifetime assumption (e.g., 3 months)
+                churned_users = int(sum(cumulative_users[:max(0, month - 3)]) * churn_rate)
 
-                revenue = subscribers * price_per_day * 30 * charging_success / 100
+                cumulative_users.append(monthly_acquired)
+                active_users += monthly_acquired - churned_users
+
+                revenue = active_users * price_per_day * 30 * charging_success / 100
 
                 forecast_data.append({
                     "Month": f"Month {month}",
                     "MonthNumber": month,
                     "New Users": monthly_acquired,
-                    "Churned Users": churn,
-                    "Total Subscribers": subscribers,
+                    "Churned Users": churned_users,
+                    "Total Subscribers": active_users,
                     "Revenue": revenue
                 })
 
@@ -218,7 +224,10 @@ with tab1:
             st.markdown(f"""
             **Daily New Users:** {daily_new_users:,}  
             **Monthly Churn Rate:** {int(churn_rate * 100)}%  
-            **Charging Success Rate:** {charging_success}%
+            **Charging Success Rate:** {charging_success}%  
+            **Operator Base Considered:** {operator_total_base:,}  
+            **Assumed Avg. Retention Period:** 3 months  
+            **Operator ARPU:** {estimated_arpu}
             """)
 
             csv = df_forecast.drop(columns=["MonthNumber"]).to_csv(index=False).encode('utf-8')
