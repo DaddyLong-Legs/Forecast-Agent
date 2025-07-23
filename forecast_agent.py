@@ -193,13 +193,22 @@ with tab1:
                 net_subs = subscribers - churn
                 revenue = net_subs * price_per_day * charging_success / 100
 
-                forecast_data.append({"Month": f"Month {month}", "Revenue": revenue, "MonthNumber": month})
+                forecast_data.append({
+                    "Month": f"Month {month}",
+                    "MonthNumber": month,
+                    "Total Subscribers": subscribers,
+                    "Churned Users": churn,
+                    "Revenue": revenue
+                })
                 subscribers = net_subs
 
             df_forecast = pd.DataFrame(forecast_data)
             df_forecast = df_forecast.sort_values("MonthNumber")
+
             st.subheader("12-Month Forecast Summary")
             st.line_chart(data=df_forecast.set_index("MonthNumber")[["Revenue"]])
+
+            st.dataframe(df_forecast.drop(columns=["MonthNumber"]))
 
             st.markdown(f"""
             **Initial Subscribers:** {int(promotional_bandwidth * (opt_in_percentage / 100)):,}  
