@@ -2,6 +2,17 @@ import streamlit as st
 from docx import Document
 from fpdf import FPDF
 import base64
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+import os
+
+# Session state initialization
+if "quotation_text" not in st.session_state:
+    st.session_state.quotation_text = ""
+    st.session_state.poc_email = ""
+    st.session_state.client_name = ""
 
 # Sample quotation data generator (replace with real logic)
 def generate_quotation(client_name, poc_name, poc_email, project_days, daily_rate, support_cost):
@@ -39,6 +50,30 @@ def create_pdf_doc(text):
     pdf.output(file_path)
     return file_path
 
+# Helper to send email
+def send_email(receiver_email, subject, body, attachments=[]):
+    sender_email = os.getenv("SMTP_SENDER_EMAIL")
+    sender_password = os.getenv("SMTP_SENDER_PASSWORD")
+    smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", 587))
+
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    for file_path in attachments:
+        with open(file_path, "rb") as f:
+            part = MIMEApplication(f.read(), Name=os.path.basename(file_path))
+            part['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
+            msg.attach(part)
+
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
+
 # UI Layout
 st.title("📊 Business Assistant Suite")
 st.header("💰 Quotation Generator")
@@ -54,17 +89,30 @@ with st.form("quotation_form"):
 
 if submit:
     quotation_text, total = generate_quotation(client_name, poc_name, poc_email, project_days, daily_rate, support_cost)
-    st.subheader("📄 Generated Quotation")
-    st.code(quotation_text, language='text')
+    st.session_state.quotation_text = quotation_text
+    st.session_state.poc_email = poc_email
+    st.session_state.client_name = client_name
 
-    word_path = create_word_doc(quotation_text)
+if st.session_state.quotation_text:
+    st.subheader("📄 Generated Quotation")
+    st.code(st.session_state.quotation_text, language='text')
+
+    word_path = create_word_doc(st.session_state.quotation_text)
     with open(word_path, "rb") as f:
         st.download_button("📥 Download Word File", f, file_name="quotation.docx")
 
-    pdf_path = create_pdf_doc(quotation_text)
+    pdf_path = create_pdf_doc(st.session_state.quotation_text)
     with open(pdf_path, "rb") as f:
         st.download_button("📥 Download PDF File", f, file_name="quotation.pdf")
 
     if st.button("✉️ Send Quotation to Client"):
-        # Add email sending logic here, e.g., using smtplib or an external API
-        st.success(f"Quotation emailed to {poc_email} successfully!")
+        try:
+            send_email(
+                receiver_email=st.session_state.poc_email,
+                subject=f"Quotation from Business Assistant Suite - {st.session_state.client_name}",
+                body=st.session_state.quotation_text,
+                attachments=[word_path, pdf_path]
+            )
+            st.success(f"Quotation emailed to {st.session_state.poc_email} successfully!")
+        except Exception as e:
+            st.error(f"Failed to send email: {e}")
