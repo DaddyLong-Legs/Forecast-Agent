@@ -199,7 +199,7 @@ with tab1:
             df_forecast = pd.DataFrame(forecast_data)
             df_forecast = df_forecast.sort_values("MonthNumber")
             st.subheader("12-Month Forecast Summary")
-            st.line_chart(data=df_forecast.set_index("Month")[["Revenue"]])
+            st.line_chart(data=df_forecast.set_index("MonthNumber")[["Revenue"]])
 
             st.markdown(f"""
             **Initial Subscribers:** {int(promotional_bandwidth * (opt_in_percentage / 100)):,}  
