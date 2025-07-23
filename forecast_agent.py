@@ -151,10 +151,13 @@ with tab1:
     st.header("\U0001F4C8 Forecasting Agent")
 
     st.subheader("Service Configuration")
-    service_type = st.selectbox("Service Type", ["VAS", "Gaming", "IVR", "Other"])
+    service_group = st.selectbox("Service Group", ["Legacy (SMS, IVR, USSD)", "Digital (Web, Mobile App)"])
+    is_telco_branded = st.radio("Branding Type", ["Telco-branded", "White-label"])
     operator_type = st.selectbox("Operator Type", ["Operator", "Aggregator"])
     region = st.selectbox("Region", ["Pakistan", "UAE", "KSA", "Egypt", "South Africa"])
     operator = st.selectbox("Operator Name", ["Telenor", "Jazz", "Zong", "Ufone"])
+    nature_of_service = st.selectbox("Nature of Service", ["Subscription Based", "One-time", "Freemium", "Ad Supported"])
+    category = st.selectbox("Category", ["Entertainment", "Religious", "Informational", "Games", "Utility", "Music", "Education"])
 
     st.subheader("Conversion & Revenue Inputs")
     charging_success = st.slider("Charging Success Rate (%)", 0, 100, 8)
